@@ -1,0 +1,132 @@
+# off-campus
+sshpass -p jBR=QkF4 ssh ct2243@access.cims.nyu.edu
+
+
+
+ssh cassio.cs.nyu.edu
+jBR=QkF4
+
+cd Desktop/research_ML/symplectic_integrator
+
+
+conda activate symplectic
+module load cuda-10.0
+
+_________________________________________________________________
+
+# srun --qos=interactive --gres=gpu:1 --constraint=gpu_12gb --pty bash
+nvidia-smi
+
+python3 train.py
+
+_________________________________________________________________
+
+
+####################### put everything in myscript.s file at home
+#!/bin/bash
+#SBATCH --nodes=2
+#SBATCH --ntasks-per-node=2
+#SBATCH --gres=gpu:1l
+#SBATCH --time=10:00:00
+#SBATCH --mem=3GB
+#SBATCH --job-name=GPU
+#SBATCH --mail-type=END
+#SBATCH --mail-user=ct2243@nyu.edu
+#SBATCH --output=slurm_%j.out
+
+cd Desktop/research_ML/symplectic_integrator
+nvprof python3 train.py
+#######################
+
+sbatch -n1 -o my.stdout myscript.s
+nvidia-smi
+
+_________________________________________________________________
+####################### Jupyter notebook
+
+ssh ct2243@access.cims.nyu.edu
+jBR=QkF4
+
+ssh ct2243@prince.hpc.nyu.edu
+RossM1370
+cd /scratch/ct2243/myjupyter
+
+## check quota
+du -csh .??*
+
+_________________________________________________________________
+jBR=QkF4
+
+Step 1: locally, run
+
+ssh -4 -L 8013:localhost:8013 ct2243@access.cims.nyu.edu
+
+Step 2: at access node, run
+
+ssh -4 -L 8013:localhost:8013 ct2243@cassio.cs.nyu.edu 
+
+Step 3: at Cassio, run 
+
+cd Desktop/research_ML/batch
+conda activate symplectic
+sbatch run-jupyter.sbatch
+
+ssh -4 -N -f -L 8013:localhost:8013 ct2243@weaver3.cs.nyu.edu
+
+
+
+export portnum=8013
+ssh -4 -L $portnum:localhost:$portnum ct2243@access.cims.nyu.edu
+
+export portnum=8013
+ssh -4 -L $portnum:localhost:$portnum ct2243@cassio.cs.nyu.edu 
+
+
+export portnum=8013
+cd Desktop/research_ML/batch
+conda activate symplectic
+sbatch run-jupyter.sbatch
+
+
+############################script for run-jupyter.sbatch:
+#!/bin/bash
+#SBATCH --job-name=jupyter
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=2
+#SBATCH --mem=2GB
+#SBATCH --time=4:00:00
+#SBATCH --gres=gpu:1
+#SBATCH --output=a.out
+
+
+module purge
+module load cuda-10.0
+
+port=8013
+
+#get tunneling info
+
+node=$(hostname -s)
+
+echo -e "
+ssh -4 -N -f -L ${port}:localhost:${port} ct2243@${node}.cs.nyu.edu
+Use a Browser on your local machine to go to:
+localhost:${port}
+"
+unset XDG_RUNTIME_DIR
+if [ "$SLURM_JOBTMP" != "" ]; then
+    export XDG_RUNTIME_DIR=$SLURM_JOBTMP
+fi
+
+jupyter notebook --no-browser --port $port --notebook-dir=$(pwd)
+
+#############################
+
+
+## copy paste from output file of sbatch for a line like:
+ssh -4 -N -f -L <portnum>:localhost:<portnum> ct2243@<server>.cs.nyu.edu
+
+
+
+
+
